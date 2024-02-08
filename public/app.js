@@ -18,6 +18,7 @@ let localStream = null;
 let remoteStream = null;
 let roomDialog = null;
 let roomId = null;
+let isHost = false;
 
 function init() {
   document.querySelector('#cameraBtn').addEventListener('click', openUserMedia);
@@ -66,6 +67,7 @@ async function createRoom() {
   await roomRef.set(roomWithOffer);
   roomId = roomRef.id;
 
+  isHost = true;
   document.querySelector('#currentRoom').innerText = `Current room is ${roomId} - You are the caller!`;
 
   peerConnection.addEventListener('track', event => {
@@ -157,6 +159,15 @@ async function joinRoomById(roomId) {
     }
     await roomRef.update(roomWithAnswer);
 
+    roomRef.onSnapshot(snapshot => {
+      snapshot.docChanges().forEach(async change => {
+        if (change.type === 'removed') {
+          console.log("The host has deleted the room");
+          await hangUp();
+        }
+      })
+    })
+
     roomRef.collection('callerCandidates').onSnapshot(snapshot => {
       snapshot.docChanges().forEach(async change => {
         if (change.type === 'added') {
@@ -220,6 +231,8 @@ async function hangUp(e) {
     });
     await roomRef.delete();
   }
+
+  isHost = false;
 
   document.location.reload(true);
 }
